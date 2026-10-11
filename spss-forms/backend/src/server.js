@@ -34,5 +34,5 @@ if (fs.existsSync(FRONTEND_DIST)) {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-  console.log(`SPSS-Forms listening on port ${PORT}`);
+  console.log(`SPSS-Forms listening on port /${PORT}`);
 });
