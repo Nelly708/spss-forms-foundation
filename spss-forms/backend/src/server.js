@@ -10,7 +10,7 @@ import statsRouter from "./routes/stats.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -33,6 +33,6 @@ if (fs.existsSync(FRONTEND_DIST)) {
   });
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`SPSS-Forms listening on http://0.0.0.0:\${PORT}`);
+app.listen(PORT, () => {
+  console.log(`SPSS-Forms listening on port \${PORT}`);
 });
