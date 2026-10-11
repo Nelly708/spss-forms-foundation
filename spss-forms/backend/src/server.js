@@ -12,8 +12,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => res.send('Backend OK'));
-
 app.use(cors());
 app.use(express.json());
 
@@ -36,5 +34,5 @@ if (fs.existsSync(FRONTEND_DIST)) {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-  console.log(`SPSS-Forms listening on port \${PORT}`);
+  console.log(`SPSS-Forms listening on port ${PORT}`);
 });
