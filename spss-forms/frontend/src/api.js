@@ -1,4 +1,4 @@
-const BASE = "/api/forms";
+const BASE = "https://spss-forms-backend.onrender.com";
 
 async function handle(res) {
   if (!res.ok) {
