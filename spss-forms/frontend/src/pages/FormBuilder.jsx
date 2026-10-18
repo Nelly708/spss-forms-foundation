@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../api.js";
 import QuestionEditor from "../components/QuestionEditor.jsx";
 import { blankQuestion, arrayMove } from "../questionTypes.js";
+import { useLanguage } from "../i18n.jsx";
 
 let idCounter = 0;
 function tempId() {
@@ -12,6 +13,7 @@ function tempId() {
 
 export default function FormBuilder() {
   const { id } = useParams();
+  const { t } = useLanguage();
   const [form, setForm] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [focusedId, setFocusedId] = useState(null);
@@ -70,27 +72,27 @@ export default function FormBuilder() {
     }
   }
 
-  if (!form) return <div className="container"><p>Loading…</p></div>;
+  if (!form) return <div className="container"><p>{t("loading")}</p></div>;
 
   return (
     <div className="container">
       <div className="top-tabs">
-        <span className="active" style={{ padding: "10px 16px" }}>Questions</span>
-        <Link to={`/forms/${id}/results`}>Responses</Link>
-        <Link to={`/forms/${id}/view`} target="_blank">Preview / Fill in ↗</Link>
+        <span className="active" style={{ padding: "10px 16px" }}>{t("tabQuestions")}</span>
+        <Link to={`/forms/${id}/results`}>{t("tabResponses")}</Link>
+        <Link to={`/forms/${id}/view`} target="_blank">{t("tabPreview")}</Link>
       </div>
 
       <div className="card header-card">
         <input
           className="title-input"
           type="text"
-          placeholder="Untitled form"
+          placeholder={t("untitledForm")}
           value={form.title}
           onChange={(e) => persistTitle({ title: e.target.value })}
         />
         <input
           type="text"
-          placeholder="Form description"
+          placeholder={t("formDescriptionPlaceholder")}
           value={form.description}
           onChange={(e) => persistTitle({ description: e.target.value })}
           style={{ marginTop: 10 }}
@@ -114,13 +116,13 @@ export default function FormBuilder() {
       ))}
 
       <div style={{ display: "flex", gap: 10, marginTop: 16, alignItems: "center" }}>
-        <button className="btn secondary" onClick={addQuestion}>+ Add question</button>
+        <button className="btn secondary" onClick={addQuestion}>{t("addQuestion")}</button>
         <button className="btn" onClick={saveAll} disabled={saving}>
-          {saving ? "Saving…" : "Save form"}
+          {saving ? t("saving") : t("saveForm")}
         </button>
         {savedAt && !saving && (
           <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
-            Saved {savedAt.toLocaleTimeString()}
+            {t("savedAt", { time: savedAt.toLocaleTimeString() })}
           </span>
         )}
       </div>

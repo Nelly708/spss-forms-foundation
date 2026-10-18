@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { shuffleArray } from "../questionTypes.js";
+import { useLanguage } from "../i18n.jsx";
 
 function OtherCapableChoice({ question, options, value, onChange, multi }) {
+  const { t } = useLanguage();
   const allowOther = !!question.config?.allowOther;
 
   if (!multi) {
@@ -19,7 +21,7 @@ function OtherCapableChoice({ question, options, value, onChange, multi }) {
         {allowOther && (
           <label className="option-row" style={{ cursor: "pointer" }}>
             <input type="radio" name={question.id} checked={otherActive} onChange={() => onChange(otherActive ? value : "")} />
-            <span>Other:</span>
+            <span>{t("otherLabel")}</span>
             <input
               type="text"
               style={{ marginLeft: 6 }}
@@ -65,7 +67,7 @@ function OtherCapableChoice({ question, options, value, onChange, multi }) {
       {allowOther && (
         <label className="option-row checkbox" style={{ cursor: "pointer" }}>
           <input type="checkbox" checked={otherActive} onChange={toggleOther} />
-          <span>Other:</span>
+          <span>{t("otherLabel")}</span>
           <input
             type="text"
             style={{ marginLeft: 6 }}
@@ -122,6 +124,7 @@ function MatrixInput({ question, value, onChange }) {
 }
 
 export default function QuestionRenderer({ question, value, onChange }) {
+  const { t } = useLanguage();
   const { type } = question;
 
   // Shuffle once per question per page load (not on every re-render/keystroke),
@@ -153,7 +156,7 @@ export default function QuestionRenderer({ question, value, onChange }) {
   if (type === "dropdown") {
     return (
       <select value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
-        <option value="" disabled>Choose</option>
+        <option value="" disabled>{t("choose")}</option>
         {displayOptions.map((opt) => (
           <option key={opt} value={opt}>{opt}</option>
         ))}

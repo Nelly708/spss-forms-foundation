@@ -1,13 +1,16 @@
-export const QUESTION_TYPES = [
-  { value: "short_text", label: "Short answer" },
-  { value: "paragraph", label: "Paragraph" },
-  { value: "multiple_choice", label: "Multiple choice" },
-  { value: "checkbox", label: "Checkboxes" },
-  { value: "dropdown", label: "Dropdown" },
-  { value: "linear_scale", label: "Linear scale" },
-  { value: "matrix", label: "Matrix / grid (cross-tab)" },
-  { value: "number", label: "Number" },
-  { value: "date", label: "Date" },
+// Question type values — their display labels live in i18n.jsx
+// (under questionType.<value> for each language) so they translate
+// automatically with the language switcher.
+export const QUESTION_TYPE_VALUES = [
+  "short_text",
+  "paragraph",
+  "multiple_choice",
+  "checkbox",
+  "dropdown",
+  "linear_scale",
+  "matrix",
+  "number",
+  "date",
 ];
 
 export const HAS_OPTIONS = new Set(["multiple_choice", "checkbox", "dropdown"]);
@@ -21,17 +24,18 @@ export const CAN_SHUFFLE = new Set(["multiple_choice", "checkbox", "dropdown"]);
 
 // Font choices for question titles/descriptions — all either web-safe fonts
 // or ones already loaded via Google Fonts in index.html, so picking one
-// never needs an extra network request.
+// never needs an extra network request. Labels live in i18n.jsx under
+// font.<key> for each language.
 export const FONT_OPTIONS = [
-  { value: "", label: "Default" },
-  { value: "'Google Sans', sans-serif", label: "Google Sans" },
-  { value: "Roboto, sans-serif", label: "Roboto" },
-  { value: "Georgia, serif", label: "Georgia (serif)" },
-  { value: "'Times New Roman', Times, serif", label: "Times New Roman" },
-  { value: "Arial, Helvetica, sans-serif", label: "Arial" },
-  { value: "Verdana, Geneva, sans-serif", label: "Verdana" },
-  { value: "'Courier New', Courier, monospace", label: "Courier New (monospace)" },
-  { value: "'Comic Sans MS', 'Comic Sans', cursive", label: "Comic Sans" },
+  { value: "", key: "default" },
+  { value: "'Google Sans', sans-serif", key: "googleSans" },
+  { value: "Roboto, sans-serif", key: "roboto" },
+  { value: "Georgia, serif", key: "georgia" },
+  { value: "'Times New Roman', Times, serif", key: "timesNewRoman" },
+  { value: "Arial, Helvetica, sans-serif", key: "arial" },
+  { value: "Verdana, Geneva, sans-serif", key: "verdana" },
+  { value: "'Courier New', Courier, monospace", key: "courierNew" },
+  { value: "'Comic Sans MS', 'Comic Sans', cursive", key: "comicSans" },
 ];
 
 export function blankQuestion(id) {
@@ -46,8 +50,13 @@ export function blankQuestion(id) {
   };
 }
 
-export function blankMatrixConfig() {
-  return { rows: ["Row 1", "Row 2"], columns: ["Yes", "No"] };
+// Default matrix rows/columns, translated — pass the `t` function from
+// useLanguage() so the defaults match the current UI language.
+export function blankMatrixConfig(t) {
+  return {
+    rows: [t("rowN", { n: 1 }), t("rowN", { n: 2 })],
+    columns: [t("yes"), t("no")],
+  };
 }
 
 // Fisher-Yates shuffle — used to randomize answer order without mutating

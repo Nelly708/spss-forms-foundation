@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api.js";
 import QuestionRenderer from "../components/QuestionRenderer.jsx";
+import { useLanguage } from "../i18n.jsx";
 
 export default function FormViewer() {
   const { id } = useParams();
+  const { t } = useLanguage();
   const [form, setForm] = useState(null);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -30,14 +32,14 @@ export default function FormViewer() {
     }
   }
 
-  if (!form) return <div className="container"><p>Loading…</p></div>;
+  if (!form) return <div className="container"><p>{t("loading")}</p></div>;
 
   if (submitted) {
     return (
       <div className="container">
         <div className="card header-card" style={{ textAlign: "center" }}>
-          <h2>Response recorded</h2>
-          <p>Thanks for filling out "{form.title}".</p>
+          <h2>{t("responseRecorded")}</h2>
+          <p>{t("thanksForFilling", { title: form.title })}</p>
         </div>
       </div>
     );
@@ -79,7 +81,7 @@ export default function FormViewer() {
 
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
 
-      <button className="btn" type="submit">Submit</button>
+      <button className="btn" type="submit">{t("submit")}</button>
     </form>
   );
 }

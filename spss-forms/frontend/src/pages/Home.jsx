@@ -1,25 +1,27 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api.js";
+import { useLanguage } from "../i18n.jsx";
 
 export default function Home() {
   const [forms, setForms] = useState(null);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { t, tn } = useLanguage();
 
   useEffect(() => {
     api.listForms().then(setForms).catch((e) => setError(e.message));
   }, []);
 
   async function createForm() {
-    const form = await api.createForm({ title: "Untitled form" });
+    const form = await api.createForm({ title: t("untitledForm") });
     navigate(`/forms/${form.id}/edit`);
   }
 
   async function removeForm(id, e) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm("Delete this form and all its responses?")) return;
+    if (!confirm(t("deleteFormConfirm"))) return;
     await api.deleteForm(id);
     setForms((f) => f.filter((x) => x.id !== id));
   }
@@ -27,17 +29,17 @@ export default function Home() {
   return (
     <div className="container">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h2>Your forms</h2>
-        <button className="btn" onClick={createForm}>+ New form</button>
+        <h2>{t("yourForms")}</h2>
+        <button className="btn" onClick={createForm}>{t("newForm")}</button>
       </div>
 
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
 
-      {!forms && !error && <p>Loading…</p>}
+      {!forms && !error && <p>{t("loading")}</p>}
 
       {forms && forms.length === 0 && (
         <div className="card empty-state">
-          <p>No forms yet. Create your first one to get started.</p>
+          <p>{t("noFormsYet")}</p>
         </div>
       )}
 
@@ -53,10 +55,10 @@ export default function Home() {
               <div>
                 <div style={{ fontWeight: 500 }}>{f.title}</div>
                 <div className="meta">
-                  {f.questionCount} question{f.questionCount === 1 ? "" : "s"} · {f.responseCount} response{f.responseCount === 1 ? "" : "s"}
+                  {tn("questionsCount", f.questionCount)} · {tn("responsesCount", f.responseCount)}
                 </div>
               </div>
-              <button className="btn text" onClick={(e) => removeForm(f.id, e)}>Delete</button>
+              <button className="btn text" onClick={(e) => removeForm(f.id, e)}>{t("delete")}</button>
             </Link>
           ))}
         </div>
