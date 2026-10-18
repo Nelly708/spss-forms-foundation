@@ -1,12 +1,4 @@
-// In local dev (and in the "single combined app" deployment, e.g. Railway),
-// the frontend and backend share an origin, so a relative "/api/forms" path
-// works. When the frontend is deployed SEPARATELY from the backend (e.g.
-// backend on one Render service, frontend as its own Render Static Site),
-// there's no shared origin to be relative to — set VITE_API_BASE to the
-// backend's full URL (e.g. https://spss-forms-backend1.onrender.com) as an
-// environment variable on the frontend's Render service, and rebuild.
-const API_ROOT = import.meta.env.VITE_API_BASE || "";
-const BASE = `${API_ROOT}/api/forms`;
+const BASE = "https://spss-forms-backend1.onrender.com/api/forms";
 
 async function handle(res) {
   if (!res.ok) {
