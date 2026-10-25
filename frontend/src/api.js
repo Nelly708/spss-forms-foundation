@@ -6,7 +6,7 @@
 // backend's full URL (e.g. https://spss-forms-backend1.onrender.com) as an
 // environment variable on the frontend's Render service, and rebuild.
 const API_ROOT = import.meta.env.VITE_API_BASE || "";
-const BASE = `${API_ROOT}/api/forms`;
+const BASE = "https://spss-forms-backend1.onrender.com/api/forms";
 
 async function handle(res) {
   if (!res.ok) {
