@@ -4,9 +4,19 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import "./db.js"; // ensures tables exist on boot
+import { seedDatabase } from "./seed.js";
 import formsRouter from "./routes/forms.js";
 import responsesRouter from "./routes/responses.js";
 import statsRouter from "./routes/stats.js";
+
+// On a free-tier host, the database file can get wiped on restart (no
+// persistent disk). If that happens, repopulate the example forms
+// automatically so the site never opens to a completely empty list. This
+// does nothing if any form already exists.
+const seedResult = seedDatabase({ force: false });
+if (seedResult.seeded) {
+  console.log("Database was empty on boot — auto-seeded the example forms.");
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -33,6 +43,6 @@ if (fs.existsSync(FRONTEND_DIST)) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`SPSS-Forms listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`SPSS-Forms listening on port ${PORT}`);
 });

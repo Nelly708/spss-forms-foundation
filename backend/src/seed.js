@@ -344,19 +344,42 @@ const form2Questions = [
   { type: "paragraph", title: "34. Если что-то изменилось, опишите коротко, что конкретно" },
 ];
 
-const id1 = insertForm(
-  "Профессиональные ориентации студентов",
-  "Социологическое исследование особенностей профессиональных ориентаций современных студентов ВУЗов. Опрос анонимен, данные используются только в обобщённом виде.",
-  form1Questions
-);
+// Inserts the two example forms. By default (force: false) it only does
+// this when the database is completely empty of forms — safe to call on
+// every server boot, so free-tier hosts that wipe storage on restart
+// (Render/Railway's free plans) automatically get these forms back without
+// needing manual shell access. Pass { force: true } to always add a fresh
+// copy regardless (used by the `npm run seed` command below).
+export function seedDatabase({ force = false } = {}) {
+  if (!force) {
+    const existing = db.prepare("SELECT COUNT(*) as c FROM forms").get().c;
+    if (existing > 0) {
+      return { seeded: false, reason: "forms already exist" };
+    }
+  }
 
-const id2 = insertForm(
-  "Отношение к дню рождения",
-  "Мониторинг отношения к дню рождения. Опрос анонимен, данные используются только в обобщённом виде.",
-  form2Questions
-);
+  const id1 = insertForm(
+    "Профессиональные ориентации студентов",
+    "Социологическое исследование особенностей профессиональных ориентаций современных студентов ВУЗов. Опрос анонимен, данные используются только в обобщённом виде.",
+    form1Questions
+  );
 
-console.log("Seeded two forms:");
-console.log(" - Профессиональные ориентации студентов:", id1);
-console.log(" - Отношение к дню рождения:", id2);
-console.log("Open http://localhost:5173 to see them in 'Your forms'.");
+  const id2 = insertForm(
+    "Отношение к дню рождения",
+    "Мониторинг отношения к дню рождения. Опрос анонимен, данные используются только в обобщённом виде.",
+    form2Questions
+  );
+
+  return { seeded: true, formIds: [id1, id2] };
+}
+
+// Allow running this file directly for a one-off manual seed: `npm run seed`
+// (always adds a fresh copy, even if forms already exist).
+import { fileURLToPath } from "url";
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const result = seedDatabase({ force: true });
+  console.log("Seeded two forms:");
+  console.log(" - Профессиональные ориентации студентов:", result.formIds[0]);
+  console.log(" - Отношение к дню рождения:", result.formIds[1]);
+  console.log("Open your site to see them in 'Your forms'.");
+}
