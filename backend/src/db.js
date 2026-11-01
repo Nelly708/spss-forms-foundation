@@ -58,5 +58,16 @@ CREATE INDEX IF NOT EXISTS idx_answers_response ON answers(response_id);
 CREATE INDEX IF NOT EXISTS idx_answers_question ON answers(question_id);
 `);
 
+// Small migrations for databases created by earlier versions of the app:
+// add the columns newer features need, only when they are missing.
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+ensureColumn("forms", "settings", "TEXT DEFAULT '{}'");
+ensureColumn("responses", "timed_out", "INTEGER NOT NULL DEFAULT 0");
+
 // Cascading deletes are done manually in the route handlers rather than via
 // SQLite foreign keys, to keep behavior simple and explicit.

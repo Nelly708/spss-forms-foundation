@@ -31,7 +31,10 @@ export default function FormResults() {
 
       <div className="card header-card">
         <h2 style={{ margin: 0 }}>{stats.title}</h2>
-        <p style={{ color: "var(--text-secondary)" }}>{tn("responsesCount", stats.totalResponses)}</p>
+        <p style={{ color: "var(--text-secondary)" }}>
+          {tn("responsesCount", stats.totalResponses)}
+          {stats.timedOutCount > 0 && <> · {t("timedOutCount", { n: stats.timedOutCount })}</>}
+        </p>
       </div>
 
       {stats.totalResponses === 0 && (

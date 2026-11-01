@@ -1,12 +1,13 @@
-// In local dev (and in the "single combined app" deployment, e.g. Railway),
-// the frontend and backend share an origin, so a relative "/api/forms" path
-// works. When the frontend is deployed SEPARATELY from the backend (e.g.
-// backend on one Render service, frontend as its own Render Static Site),
-// there's no shared origin to be relative to — set VITE_API_BASE to the
-// backend's full URL (e.g. https://spss-forms-backend1.onrender.com) as an
-// environment variable on the frontend's Render service, and rebuild.
-const API_ROOT = import.meta.env.VITE_API_BASE || "";
-const BASE = "https://spss-forms-backend1.onrender.com/api/forms";
+// Where the backend lives.
+// - Local development (npm run dev): empty, so the relative "/api/forms" path
+//   goes through the Vite dev server's proxy to your local backend.
+// - Production build (what Render builds for your frontend service): the
+//   address of your backend service below. Change this line if your backend
+//   address ever changes, or set VITE_API_BASE on the frontend service to
+//   override it without editing code.
+const PRODUCTION_BACKEND = "https://spss-forms-backend1.onrender.com";
+const API_ROOT = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? PRODUCTION_BACKEND : "");
+const BASE = `${API_ROOT}/api/forms`;
 
 async function handle(res) {
   if (!res.ok) {
@@ -38,11 +39,13 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ questions }),
     }).then(handle),
-  submitResponse: (formId, answers) =>
+  // timedOut = true when the form's timer ran out and the answers filled in
+  // so far were sent automatically.
+  submitResponse: (formId, answers, timedOut = false) =>
     fetch(`${BASE}/${formId}/responses`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, timedOut }),
     }).then(handle),
   listResponses: (formId) => fetch(`${BASE}/${formId}/responses`).then(handle),
   getStats: (formId) => fetch(`${BASE}/${formId}/stats`).then(handle),

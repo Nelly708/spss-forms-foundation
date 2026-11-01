@@ -4,6 +4,25 @@ import { db } from "../db.js";
 
 const router = Router();
 
+function parseSettings(raw) {
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+// Form-level settings: an optional time limit (whole minutes) and whether
+// respondents see a completion percentage. Anything else is ignored.
+function sanitizeSettings(raw) {
+  const out = {};
+  const minutes = Number(raw?.timeLimitMinutes);
+  if (Number.isFinite(minutes) && minutes >= 1) out.timeLimitMinutes = Math.min(Math.floor(minutes), 1440);
+  if (raw?.showProgress) out.showProgress = true;
+  return out;
+}
+
 function serializeForm(form) {
   const questions = db
     .prepare("SELECT * FROM questions WHERE form_id = ? ORDER BY position ASC")
@@ -14,7 +33,7 @@ function serializeForm(form) {
       options: JSON.parse(q.options || "[]"),
       config: JSON.parse(q.config || "{}"),
     }));
-  return { ...form, questions };
+  return { ...form, settings: parseSettings(form.settings), questions };
 }
 
 // List all forms (summary only)
@@ -55,9 +74,13 @@ router.patch("/:id", (req, res) => {
   if (!form) return res.status(404).json({ error: "Form not found" });
   const title = req.body?.title ?? form.title;
   const description = req.body?.description ?? form.description;
+  const settings =
+    req.body?.settings !== undefined
+      ? JSON.stringify(sanitizeSettings(req.body.settings))
+      : form.settings || "{}";
   db.prepare(
-    "UPDATE forms SET title = ?, description = ?, updated_at = ? WHERE id = ?"
-  ).run(title, description, new Date().toISOString(), req.params.id);
+    "UPDATE forms SET title = ?, description = ?, settings = ?, updated_at = ? WHERE id = ?"
+  ).run(title, description, settings, new Date().toISOString(), req.params.id);
   res.json(serializeForm(db.prepare("SELECT * FROM forms WHERE id = ?").get(req.params.id)));
 });
 
@@ -100,17 +123,31 @@ router.put("/:id/questions", (req, res) => {
       `INSERT INTO questions (id, form_id, type, title, description, required, options, config, position)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
-    questions.forEach((q, index) => {
+    // Questions created in the builder have temporary ids; give them real
+    // ones first so show/hide rules can be re-pointed at the new ids.
+    const idMap = {};
+    const prepared = questions.map((q) => {
       const isTemp = !q.id || String(q.id).startsWith("tmp_");
+      const newId = isTemp ? nanoid(10) : q.id;
+      if (q.id) idMap[q.id] = newId;
+      return { q, newId };
+    });
+    prepared.forEach(({ q, newId }, index) => {
+      const config = { ...(q.config || {}) };
+      if (config.condition) {
+        const target = idMap[config.condition.questionId];
+        if (target) config.condition = { ...config.condition, questionId: target };
+        else delete config.condition; // source question no longer exists
+      }
       insert.run(
-        isTemp ? nanoid(10) : q.id,
+        newId,
         req.params.id,
         q.type || "short_text",
         q.title || "",
         q.description || "",
         q.required ? 1 : 0,
         JSON.stringify(q.options || []),
-        JSON.stringify(q.config || {}),
+        JSON.stringify(config),
         index
       );
     });

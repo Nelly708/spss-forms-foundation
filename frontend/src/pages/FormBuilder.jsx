@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api.js";
 import QuestionEditor from "../components/QuestionEditor.jsx";
-import { blankQuestion, arrayMove } from "../questionTypes.js";
+import { blankQuestion, arrayMove, HAS_OPTIONS } from "../questionTypes.js";
 import { useLanguage } from "../i18n.jsx";
 
 let idCounter = 0;
@@ -35,6 +35,13 @@ export default function FormBuilder() {
     [id]
   );
 
+  const settings = form?.settings || {};
+  function updateSettings(patch) {
+    const next = { ...settings, ...patch };
+    setForm((f) => ({ ...f, settings: next }));
+    api.updateForm(id, { settings: next });
+  }
+
   function updateQuestion(qid, updated) {
     setQuestions((qs) => qs.map((q) => (q.id === qid ? updated : q)));
   }
@@ -54,11 +61,26 @@ export default function FormBuilder() {
   }
 
   function deleteQuestion(qid) {
-    setQuestions((qs) => qs.filter((q) => q.id !== qid));
+    setQuestions((qs) =>
+      qs
+        .filter((q) => q.id !== qid)
+        .map((q) => {
+          if (q.config?.condition?.questionId !== qid) return q;
+          const { condition, ...rest } = q.config;
+          return { ...q, config: rest };
+        })
+    );
   }
 
   function moveQuestion(index, direction) {
     setQuestions((qs) => arrayMove(qs, index, index + direction));
+  }
+
+  function previousChoiceQuestions(index) {
+    return questions
+      .slice(0, index)
+      .map((pq, i) => ({ id: pq.id, title: pq.title, type: pq.type, options: pq.options, number: i + 1 }))
+      .filter((pq) => HAS_OPTIONS.has(pq.type) && pq.options.length > 0);
   }
 
   async function saveAll() {
@@ -99,6 +121,36 @@ export default function FormBuilder() {
         />
       </div>
 
+      <div className="card">
+        <div style={{ fontWeight: 500, marginBottom: 6 }}>{t("formSettingsTitle")}</div>
+        <label className="setting-row">
+          <input
+            type="number"
+            min="1"
+            step="1"
+            style={{ width: 90 }}
+            value={settings.timeLimitMinutes ?? ""}
+            onChange={(e) =>
+              updateSettings({ timeLimitMinutes: e.target.value === "" ? null : Number(e.target.value) })
+            }
+          />
+          {t("timeLimitLabel")}
+        </label>
+        <label className="setting-row">
+          <input
+            type="checkbox"
+            checked={!!settings.showProgress}
+            onChange={(e) => updateSettings({ showProgress: e.target.checked })}
+          />
+          {t("showProgressLabel")}
+        </label>
+      </div>
+
+      <div className="required-summary">
+        <span className="required-star">*</span>
+        {t("requiredCount", { required: questions.filter((q) => q.required).length, total: questions.length })}
+      </div>
+
       {questions.map((q, index) => (
         <QuestionEditor
           key={q.id}
@@ -112,6 +164,8 @@ export default function FormBuilder() {
           onMoveDown={() => moveQuestion(index, 1)}
           isFirst={index === 0}
           isLast={index === questions.length - 1}
+          previousQuestions={previousChoiceQuestions(index)}
+          conditionAbove={index > 0 ? questions[index - 1].config?.condition || null : null}
         />
       ))}
 

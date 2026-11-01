@@ -1,5 +1,16 @@
-import { QUESTION_TYPE_VALUES, HAS_OPTIONS, CAN_HAVE_OTHER, CAN_BE_FILTER, FONT_OPTIONS, blankMatrixConfig, arrayMove, normalizeRow } from "../questionTypes.js";
+import {
+  QUESTION_TYPE_VALUES, HAS_OPTIONS, CAN_HAVE_OTHER, CAN_BE_FILTER, FONT_OPTIONS,
+  blankMatrixConfig, arrayMove, normalizeRow,
+} from "../questionTypes.js";
+import { numberLimits, numberRangeText } from "../questionLogic.js";
 import { useLanguage } from "../i18n.jsx";
+
+const selectStyle = {
+  width: "auto",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "6px 10px",
+};
 
 function MoveButtons({ onUp, onDown, disabledUp, disabledDown, upLabel, downLabel, size = "small" }) {
   const style = size === "small" ? { padding: "2px 6px", fontSize: 11 } : {};
@@ -14,6 +25,8 @@ function MoveButtons({ onUp, onDown, disabledUp, disabledDown, upLabel, downLabe
 export default function QuestionEditor({
   question, focused, onFocus, onChange, onDuplicate, onDelete,
   onMoveUp, onMoveDown, isFirst, isLast,
+  previousQuestions = [], // choice questions above this one: { id, title, options, number }
+  conditionAbove = null,  // the show/hide rule of the question right above (for "copy")
 }) {
   const { t, tn } = useLanguage();
 
@@ -22,6 +35,11 @@ export default function QuestionEditor({
   }
   function updateConfig(patch) {
     update({ config: { ...question.config, ...patch } });
+  }
+  function removeConfigKeys(...keys) {
+    const next = { ...(question.config || {}) };
+    keys.forEach((k) => delete next[k]);
+    update({ config: next });
   }
 
   function updateOption(index, value) {
@@ -40,12 +58,21 @@ export default function QuestionEditor({
   }
 
   function changeType(newType) {
-    const patch = { type: newType };
-    if (HAS_OPTIONS.has(newType) && newType !== "matrix") {
-      patch.options = question.options.length ? question.options : [t("optionN", { n: 1 })];
+    // Drop settings that belonged to the old type: number limits must not
+    // turn into a scale's range, and a filter flag makes no sense on a text
+    // question (it would screen everybody out).
+    const { min, max, ...rest } = question.config || {};
+    let config = rest;
+    if (!CAN_BE_FILTER.has(newType)) {
+      const { isFilter, qualifyingOptions, disqualifyMessage, ...withoutFilter } = config;
+      config = withoutFilter;
     }
-    if (newType === "matrix" && !question.config?.rows) {
-      patch.config = blankMatrixConfig(t);
+    if (newType === "matrix" && !config.rows) {
+      config = { ...config, ...blankMatrixConfig(t) };
+    }
+    const patch = { type: newType, config };
+    if (HAS_OPTIONS.has(newType)) {
+      patch.options = question.options.length ? question.options : [t("optionN", { n: 1 })];
     }
     update(patch);
   }
@@ -58,6 +85,35 @@ export default function QuestionEditor({
       ? qualifyingOptions.filter((o) => o !== opt)
       : [...qualifyingOptions, opt];
     updateConfig({ qualifyingOptions: next });
+  }
+
+  // --- Show/hide rule (dynamic filter) ---
+  const cond = question.config?.condition || null;
+  const condSource = cond ? previousQuestions.find((p) => p.id === cond.questionId) : null;
+  const condOptions = cond?.options || [];
+  const condStale = condSource ? condOptions.filter((o) => !condSource.options.includes(o)) : [];
+  function enableCondition() {
+    const nearest = previousQuestions[previousQuestions.length - 1];
+    updateConfig({ condition: { questionId: nearest.id, mode: "hide", options: [] } });
+  }
+  function patchCondition(patch) {
+    updateConfig({ condition: { ...cond, ...patch } });
+  }
+  function toggleCondOption(opt) {
+    patchCondition({
+      options: condOptions.includes(opt) ? condOptions.filter((o) => o !== opt) : [...condOptions, opt],
+    });
+  }
+  const sourceLabel = (p) => `${p.number}. ${(p.title || "").slice(0, 60) || "…"}`;
+
+  // --- Number limits ---
+  const limits = question.type === "number" ? numberLimits(question) : { min: null, max: null };
+  const limitsInvalid = limits.min !== null && limits.max !== null && limits.min > limits.max;
+  function setNumberLimit(key, raw) {
+    const next = { ...(question.config || {}) };
+    if (raw === "") delete next[key];
+    else next[key] = Number(raw);
+    update({ config: next });
   }
 
   // --- Matrix (grid / cross-tab) helpers ---
@@ -89,8 +145,7 @@ export default function QuestionEditor({
     e.target.value = "";
   }
   function removeImage() {
-    const { imageUrl, ...rest } = question.config || {};
-    update({ config: rest });
+    removeConfigKeys("imageUrl");
   }
 
   const titleFont = question.config?.titleFont || "";
@@ -124,13 +179,18 @@ export default function QuestionEditor({
         <div className="pill" style={{ marginBottom: 8 }}>{t("filterBadge")}</div>
       )}
 
-      <input
-        type="text"
-        placeholder={t("questionPlaceholder")}
-        value={question.title}
-        onChange={(e) => update({ title: e.target.value })}
-        style={{ fontSize: 16, marginBottom: 10, fontFamily: titleFont || "inherit" }}
-      />
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+        {question.required && (
+          <span className="required-star big" title={t("requiredLabel")}>*</span>
+        )}
+        <input
+          type="text"
+          placeholder={t("questionPlaceholder")}
+          value={question.title}
+          onChange={(e) => update({ title: e.target.value })}
+          style={{ fontSize: 16, flex: 1, fontFamily: titleFont || "inherit" }}
+        />
+      </div>
       <input
         type="text"
         placeholder={t("descriptionOptionalPlaceholder")}
@@ -140,7 +200,7 @@ export default function QuestionEditor({
       />
 
       {focused && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 14 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", marginBottom: 14 }}>
           <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
             {t("titleFont")}<br />
             <select value={titleFont} onChange={(e) => updateConfig({ titleFont: e.target.value })} style={{ marginTop: 2 }}>
@@ -157,6 +217,15 @@ export default function QuestionEditor({
             {t("image")}<br />
             <input type="file" accept="image/*" onChange={handleImageChange} style={{ marginTop: 2, fontSize: 12 }} />
           </label>
+          <label className={`required-toggle ${question.required ? "on" : ""}`}>
+            <input
+              type="checkbox"
+              checked={question.required}
+              onChange={(e) => update({ required: e.target.checked })}
+            />
+            <span className="required-star">*</span>
+            {t("requiredLabel")}
+          </label>
         </div>
       )}
 
@@ -164,7 +233,7 @@ export default function QuestionEditor({
         <select
           value={question.type}
           onChange={(e) => changeType(e.target.value)}
-          style={{ width: "auto", marginBottom: 14, border: "1px solid var(--border)", borderRadius: 4, padding: "6px 10px" }}
+          style={{ ...selectStyle, marginBottom: 14 }}
         >
           {QUESTION_TYPE_VALUES.map((value) => (
             <option key={value} value={value}>{t(`questionType.${value}`)}</option>
@@ -257,6 +326,9 @@ export default function QuestionEditor({
                       {opt}
                     </label>
                   ))}
+                  {qualifyingOptions.length === 0 && (
+                    <div className="warn-text">{t("filterNoQualifying")}</div>
+                  )}
                   <input
                     type="text"
                     placeholder={t("filterDisqualifyMessagePlaceholder")}
@@ -334,6 +406,31 @@ export default function QuestionEditor({
         </div>
       )}
 
+      {/* Number question: author-defined allowed range */}
+      {question.type === "number" && focused && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{t("numberLimitsLabel")}</div>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <label>{t("from")}
+              <input type="number" step="any" style={{ width: 110, marginLeft: 6 }}
+                value={question.config?.min ?? ""}
+                onChange={(e) => setNumberLimit("min", e.target.value)} />
+            </label>
+            <label>{t("to")}
+              <input type="number" step="any" style={{ width: 110, marginLeft: 6 }}
+                value={question.config?.max ?? ""}
+                onChange={(e) => setNumberLimit("max", e.target.value)} />
+            </label>
+          </div>
+          {limitsInvalid && <div className="warn-text">{t("numberRangeInvalid")}</div>}
+        </div>
+      )}
+      {question.type === "number" && !focused && (
+        <div className="meta" style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+          {numberRangeText(t, question) || <input disabled type="number" style={{ opacity: 0.6 }} />}
+        </div>
+      )}
+
       {question.type === "paragraph" && (
         <textarea disabled placeholder={t("longAnswerPlaceholder")} style={{ marginTop: 8, opacity: 0.6 }} />
       )}
@@ -341,19 +438,108 @@ export default function QuestionEditor({
         <input disabled type="text" placeholder={t("shortAnswerPlaceholder")} style={{ marginTop: 8, opacity: 0.6 }} />
       )}
 
+      {/* Show/hide rule (dynamic filter) — editing */}
+      {focused && (
+        <div className="condition-box">
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary)" }}>
+            <input
+              type="checkbox"
+              checked={!!cond}
+              disabled={!cond && previousQuestions.length === 0}
+              onChange={(e) => (e.target.checked ? enableCondition() : removeConfigKeys("condition"))}
+            />
+            {t("conditionToggleLabel")}
+          </label>
+
+          {!cond && previousQuestions.length === 0 && (
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6, marginLeft: 24 }}>
+              {t("conditionNoEligible")}
+            </div>
+          )}
+          {!cond && conditionAbove && previousQuestions.some((p) => p.id === conditionAbove.questionId) && (
+            <button
+              type="button"
+              className="btn text"
+              style={{ marginLeft: 20, marginTop: 4 }}
+              onClick={() => updateConfig({ condition: { ...conditionAbove } })}
+            >
+              ⧉ {t("conditionCopyAbove")}
+            </button>
+          )}
+
+          {cond && (
+            <div style={{ marginTop: 10, marginLeft: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+              <select
+                value={cond.mode === "show" ? "show" : "hide"}
+                onChange={(e) => patchCondition({ mode: e.target.value })}
+                style={selectStyle}
+              >
+                <option value="hide">{t("conditionModeHide")}</option>
+                <option value="show">{t("conditionModeShow")}</option>
+              </select>
+
+              <label style={{ fontSize: 13 }}>
+                {t("conditionSourceLabel")}{" "}
+                <select
+                  value={condSource ? cond.questionId : ""}
+                  onChange={(e) => patchCondition({ questionId: e.target.value, options: [] })}
+                  style={selectStyle}
+                >
+                  {!condSource && <option value="">—</option>}
+                  {previousQuestions.map((p) => (
+                    <option key={p.id} value={p.id}>{sourceLabel(p)}</option>
+                  ))}
+                </select>
+              </label>
+
+              {!condSource && <div className="warn-text">{t("conditionBrokenWarning")}</div>}
+
+              {condSource && (
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>{t("conditionOptionsHint")}</div>
+                  {condSource.options.map((opt, i) => (
+                    <label key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginBottom: 4 }}>
+                      <input type="checkbox" checked={condOptions.includes(opt)} onChange={() => toggleCondOption(opt)} />
+                      {opt}
+                    </label>
+                  ))}
+                  {condStale.map((opt) => (
+                    <label key={`stale-${opt}`} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginBottom: 4, color: "var(--danger)" }}>
+                      <input type="checkbox" checked onChange={() => toggleCondOption(opt)} />
+                      {opt} {t("conditionStaleOption")}
+                    </label>
+                  ))}
+                  {condOptions.length === 0 && (
+                    <div className="warn-text">{t("conditionNoOptionsSelected")}</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show/hide rule — summary when the card is collapsed */}
+      {!focused && cond && (
+        condSource && condOptions.length > 0 ? (
+          <div className="condition-badge">
+            {t(cond.mode === "show" ? "conditionBadgeShow" : "conditionBadgeHide", {
+              n: condSource.number,
+              options: condOptions.join(", "),
+            })}
+          </div>
+        ) : (
+          <div className="condition-badge warn">
+            {condSource ? t("conditionNoOptionsSelected") : t("conditionBrokenWarning")}
+          </div>
+        )
+      )}
+
       {focused && (
         <div className="question-toolbar">
           <div className="spacer" />
           <button className="btn text" onClick={onDuplicate} title={t("duplicate")}>⧉ {t("duplicate")}</button>
           <button className="btn text" onClick={onDelete} title={t("delete")}>🗑 {t("delete")}</button>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-            {t("requiredLabel")}
-            <input
-              type="checkbox"
-              checked={question.required}
-              onChange={(e) => update({ required: e.target.checked })}
-            />
-          </label>
         </div>
       )}
     </div>

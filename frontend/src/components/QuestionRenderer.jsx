@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { shuffleArray, normalizeRow } from "../questionTypes.js";
 import { useLanguage } from "../i18n.jsx";
+import { numberLimits, numberRangeText } from "../questionLogic.js";
 
 function OtherCapableChoice({ question, options, value, onChange, multi }) {
   const { t } = useLanguage();
@@ -162,7 +163,21 @@ export default function QuestionRenderer({ question, value, onChange }) {
   }
 
   if (type === "number") {
-    return <input type="number" value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
+    const { min, max } = numberLimits(question);
+    const hint = numberRangeText(t, question);
+    return (
+      <div>
+        <input
+          type="number"
+          step="any"
+          min={min ?? undefined}
+          max={max ?? undefined}
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {hint && <div className="field-hint">{hint}</div>}
+      </div>
+    );
   }
 
   if (type === "date") {

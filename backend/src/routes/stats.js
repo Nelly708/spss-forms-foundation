@@ -20,6 +20,10 @@ router.get("/:formId/stats", (req, res) => {
     .prepare("SELECT COUNT(*) as c FROM responses WHERE form_id = ?")
     .get(req.params.formId).c;
 
+  const timedOutCount = db
+    .prepare("SELECT COUNT(*) as c FROM responses WHERE form_id = ? AND timed_out = 1")
+    .get(req.params.formId).c;
+
   const answerStmt = db.prepare("SELECT value FROM answers WHERE question_id = ?");
 
   const questionStats = questions.map((q) => {
@@ -33,6 +37,7 @@ router.get("/:formId/stats", (req, res) => {
     formId: form.id,
     title: form.title,
     totalResponses,
+    timedOutCount,
     questions: questionStats,
   });
 });

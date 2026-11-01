@@ -69,27 +69,23 @@ export function computeMatrixStats(question, rawValues) {
   );
 
   const rowStats = rows.map((row, rowIndex) => {
-    const cellValues = rawValues.map((v) => v && v[String(rowIndex)]);
+    const colValues = rawValues
+      .map((v) => v && v[String(rowIndex)])
+      .filter((v) => v !== undefined && v !== null && v !== "");
 
     if (row.freeText) {
-      // Each respondent may have typed a different row name here (e.g. a
-      // self-named quality), optionally paired with a column pick — so
-      // there's nothing meaningful to average into one frequency table.
-      // Just list what respondents wrote, each with their column choice.
-      const entries = cellValues
-        .filter((c) => c && typeof c === "object" && (c.label || c.column))
-        .map((c) => ({ label: c.label || "", column: c.column || "" }));
+      const wordCounts = colValues.map(
+        (v) => String(v).trim().split(/\s+/).filter(Boolean).length
+      );
       return {
         row: row.label,
         freeText: true,
-        responseCount: entries.length,
-        entries: entries.slice(0, 20),
+        responseCount: colValues.length,
+        avgWordCount: mean(wordCounts),
+        sampleAnswers: colValues.slice(0, 10),
       };
     }
 
-    const colValues = cellValues.filter(
-      (v) => typeof v === "string" && v !== ""
-    );
     return {
       row: row.label,
       freeText: false,
