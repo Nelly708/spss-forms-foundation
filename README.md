@@ -42,6 +42,23 @@ your response data.
   multiple-choice/checkbox/dropdown question to randomize the order options
   appear in for each respondent (an enabled "Other" option always stays
   last, same as Google Forms).
+- **Dynamic show/hide rules** — tick "Show or hide this question depending on an
+  earlier answer" on any question: pick a choice question above it and the
+  answers that trigger the rule (e.g. hide the work questions if the
+  respondent picked "Unemployed"). Hidden questions don't count as required
+  and their answers are not stored. "Copy the rule from the question above"
+  speeds up blocks of questions that share one rule.
+- **Timer and completion percentage** — under "Form settings" set a time limit
+  in minutes and/or show respondents a progress percentage. With a limit,
+  respondents see a start screen and a countdown; when time runs out, the
+  answers entered so far are submitted automatically and marked "ended by
+  timer" in the results.
+- **Required questions** — a large "Required question" toggle sits next to the
+  fonts/image controls, a big red * stays on the question card even when it is
+  collapsed, and a counter above the questions shows how many are required.
+- **Number limits** — a "Number" question can have a minimum and/or maximum;
+  respondents see the allowed range and out-of-range answers are rejected
+  (in the browser and on the server).
 - **Public form viewer** (`/forms/:id/view`) — fill in and submit a form.
 - **Response collection** — every submission is stored with per-question answers.
 - **Statistics dashboard** (`/forms/:id/results`) — for each question, computed
