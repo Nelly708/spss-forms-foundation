@@ -14,7 +14,8 @@ router.get("/:formId/stats", (req, res) => {
   const questions = db
     .prepare("SELECT * FROM questions WHERE form_id = ? ORDER BY position ASC")
     .all(req.params.formId)
-    .map((q) => ({ ...q, config: JSON.parse(q.config || "{}") }));
+    .map((q) => ({ ...q, config: JSON.parse(q.config || "{}") }))
+    .filter((q) => q.type !== "info"); // text-only blocks have no answers
 
   const totalResponses = db
     .prepare("SELECT COUNT(*) as c FROM responses WHERE form_id = ?")

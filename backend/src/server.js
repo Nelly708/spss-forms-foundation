@@ -8,6 +8,7 @@ import { seedDatabase } from "./seed.js";
 import formsRouter from "./routes/forms.js";
 import responsesRouter from "./routes/responses.js";
 import statsRouter from "./routes/stats.js";
+import exportRouter from "./routes/export.js";
 
 // On a free-tier host, the database file can get wiped on restart (no
 // persistent disk). If that happens, repopulate the example forms
@@ -30,6 +31,7 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/forms", formsRouter);
 app.use("/api/forms", responsesRouter);
 app.use("/api/forms", statsRouter);
+app.use("/api/forms", exportRouter);
 
 // In production (e.g. deployed to Railway), serve the built frontend so the
 // whole app runs as one deployed service on one URL. Locally, you don't hit

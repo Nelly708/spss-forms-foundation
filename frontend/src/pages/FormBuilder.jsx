@@ -5,6 +5,8 @@ import QuestionEditor from "../components/QuestionEditor.jsx";
 import { blankQuestion, arrayMove, HAS_OPTIONS } from "../questionTypes.js";
 import { useLanguage } from "../i18n.jsx";
 
+const EXPERT_KEY = "forms_app_expert_mode";
+
 let idCounter = 0;
 function tempId() {
   idCounter += 1;
@@ -19,6 +21,24 @@ export default function FormBuilder() {
   const [focusedId, setFocusedId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
+  // Basic mode shows only the everyday settings; expert mode adds fonts,
+  // images, tables/scales, show/hide rules, filters, shuffling and the timer.
+  // The choice is remembered in this browser.
+  const [expert, setExpertState] = useState(() => {
+    try {
+      return localStorage.getItem(EXPERT_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  function setExpert(on) {
+    setExpertState(on);
+    try {
+      localStorage.setItem(EXPERT_KEY, on ? "1" : "0");
+    } catch {
+      // ignore - the choice just won't be remembered
+    }
+  }
 
   useEffect(() => {
     api.getForm(id).then((f) => {
@@ -102,7 +122,12 @@ export default function FormBuilder() {
         <span className="active" style={{ padding: "10px 16px" }}>{t("tabQuestions")}</span>
         <Link to={`/forms/${id}/results`}>{t("tabResponses")}</Link>
         <Link to={`/forms/${id}/view`} target="_blank">{t("tabPreview")}</Link>
+        <label className="expert-toggle" title={t("expertModeHint")}>
+          <input type="checkbox" checked={expert} onChange={(e) => setExpert(e.target.checked)} />
+          <span>🧪 {t("expertModeLabel")}</span>
+        </label>
       </div>
+      {!expert && <div className="expert-caption">{t("basicModeCaption")}</div>}
 
       <div className="card header-card">
         <input
@@ -121,6 +146,10 @@ export default function FormBuilder() {
         />
       </div>
 
+      {!expert && (settings.timeLimitMinutes || settings.showProgress) && (
+        <div className="advanced-hint" style={{ marginBottom: 12 }}>{t("formAdvancedInUse")}</div>
+      )}
+      {expert && (
       <div className="card">
         <div style={{ fontWeight: 500, marginBottom: 6 }}>{t("formSettingsTitle")}</div>
         <label className="setting-row">
@@ -145,10 +174,14 @@ export default function FormBuilder() {
           {t("showProgressLabel")}
         </label>
       </div>
+      )}
 
       <div className="required-summary">
         <span className="required-star">*</span>
-        {t("requiredCount", { required: questions.filter((q) => q.required).length, total: questions.length })}
+        {t("requiredCount", {
+          required: questions.filter((q) => q.required && q.type !== "info").length,
+          total: questions.filter((q) => q.type !== "info").length,
+        })}
       </div>
 
       {questions.map((q, index) => (
@@ -164,6 +197,7 @@ export default function FormBuilder() {
           onMoveDown={() => moveQuestion(index, 1)}
           isFirst={index === 0}
           isLast={index === questions.length - 1}
+          expert={expert}
           previousQuestions={previousChoiceQuestions(index)}
           conditionAbove={index > 0 ? questions[index - 1].config?.condition || null : null}
         />

@@ -88,11 +88,22 @@ function MatrixInput({ question, value, onChange }) {
   const columns = question.config?.columns || [];
   const current = value && typeof value === "object" ? value : {};
 
-  function select(rowIndex, col) {
+  // Plain row: the cell value is just the chosen column (a string).
+  function selectPlain(rowIndex, col) {
     onChange({ ...current, [String(rowIndex)]: col });
   }
-  function setFreeText(rowIndex, text) {
-    onChange({ ...current, [String(rowIndex)]: text });
+  // "Other (specify)" row: the respondent writes their own item in the label
+  // cell AND can still pick a column for it. The cell value is { label, column }.
+  function getFreeCell(rowIndex) {
+    const c = current[String(rowIndex)];
+    if (c && typeof c === "object") return c;
+    return { label: typeof c === "string" ? c : "", column: "" };
+  }
+  function setFreeLabel(rowIndex, label) {
+    onChange({ ...current, [String(rowIndex)]: { ...getFreeCell(rowIndex), label } });
+  }
+  function selectFreeColumn(rowIndex, col) {
+    onChange({ ...current, [String(rowIndex)]: { ...getFreeCell(rowIndex), column: col } });
   }
 
   return (
@@ -107,33 +118,40 @@ function MatrixInput({ question, value, onChange }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} style={{ borderTop: "1px solid var(--border)" }}>
-              <td style={{ padding: "8px 10px" }}>{row.label}</td>
-              {row.freeText ? (
-                <td colSpan={columns.length} style={{ padding: "8px 10px" }}>
-                  <input
-                    type="text"
-                    placeholder={t("freeText")}
-                    value={current[String(rowIndex)] ?? ""}
-                    onChange={(e) => setFreeText(rowIndex, e.target.value)}
-                    style={{ width: "100%" }}
-                  />
+          {rows.map((row, rowIndex) => {
+            const freeCell = row.freeText ? getFreeCell(rowIndex) : null;
+            return (
+              <tr key={rowIndex} style={{ borderTop: "1px solid var(--border)" }}>
+                <td style={{ padding: "8px 10px" }}>
+                  {row.freeText ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>{row.label}</span>
+                      <input
+                        type="text"
+                        aria-label={row.label}
+                        placeholder={t("freeText")}
+                        value={freeCell.label ?? ""}
+                        onChange={(e) => setFreeLabel(rowIndex, e.target.value)}
+                        style={{ flex: 1, minWidth: 160 }}
+                      />
+                    </div>
+                  ) : (
+                    row.label
+                  )}
                 </td>
-              ) : (
-                columns.map((col) => (
+                {columns.map((col) => (
                   <td key={col} style={{ textAlign: "center", padding: "8px 10px" }}>
                     <input
                       type="radio"
                       name={`${question.id}_${rowIndex}`}
-                      checked={current[String(rowIndex)] === col}
-                      onChange={() => select(rowIndex, col)}
+                      checked={row.freeText ? freeCell.column === col : current[String(rowIndex)] === col}
+                      onChange={() => (row.freeText ? selectFreeColumn(rowIndex, col) : selectPlain(rowIndex, col))}
                     />
                   </td>
-                ))
-              )}
-            </tr>
-          ))}
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -69,23 +69,30 @@ export function computeMatrixStats(question, rawValues) {
   );
 
   const rowStats = rows.map((row, rowIndex) => {
-    const colValues = rawValues
-      .map((v) => v && v[String(rowIndex)])
-      .filter((v) => v !== undefined && v !== null && v !== "");
+    const cellValues = rawValues.map((v) => v && v[String(rowIndex)]);
 
     if (row.freeText) {
-      const wordCounts = colValues.map(
-        (v) => String(v).trim().split(/\s+/).filter(Boolean).length
-      );
+      // The respondent wrote their own item in the row label AND (optionally)
+      // picked a column for it: { label, column }. Older data may hold a
+      // plain string, which is treated as the written text.
+      const entries = cellValues
+        .map((c) => {
+          if (typeof c === "string") return { label: c, column: "" };
+          if (c && typeof c === "object") return { label: c.label || "", column: c.column || "" };
+          return null;
+        })
+        .filter((e) => e && (e.label || e.column));
+      const chosen = entries.map((e) => e.column).filter(Boolean);
       return {
         row: row.label,
         freeText: true,
-        responseCount: colValues.length,
-        avgWordCount: mean(wordCounts),
-        sampleAnswers: colValues.slice(0, 10),
+        responseCount: entries.length,
+        frequency: frequencyTable(chosen),
+        entries: entries.slice(0, 20),
       };
     }
 
+    const colValues = cellValues.filter((v) => typeof v === "string" && v !== "");
     return {
       row: row.label,
       freeText: false,

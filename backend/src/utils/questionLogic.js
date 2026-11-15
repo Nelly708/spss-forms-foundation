@@ -43,6 +43,15 @@ export function computeVisibility(questions, answers) {
   return visible;
 }
 
+// A matrix cell is a plain string (the chosen column), or - for a row the
+// respondent can write into - an object { label, column }.
+function cellFilled(v) {
+  if (v && typeof v === "object") {
+    return String(v.label ?? "").trim() !== "" || String(v.column ?? "").trim() !== "";
+  }
+  return String(v ?? "").trim() !== "";
+}
+
 export function isAnswered(question, value) {
   if (value === undefined || value === null) return false;
   if (question.type === "checkbox") {
@@ -53,7 +62,7 @@ export function isAnswered(question, value) {
   if (question.type === "matrix") {
     if (typeof value !== "object") return false;
     const rows = (question.config?.rows || []).map(normalizeRow);
-    const filled = (i) => String(value[String(i)] ?? "").trim() !== "";
+    const filled = (i) => cellFilled(value[String(i)]);
     const choiceRows = rows.map((r, i) => ({ r, i })).filter((x) => !x.r.freeText);
     if (choiceRows.length === 0) return rows.some((_, i) => filled(i));
     return choiceRows.every((x) => filled(x.i));
@@ -95,6 +104,7 @@ export function validateSubmission(questions, rawAnswers, { timedOut = false } =
   const clean = [];
   for (const q of questions) {
     if (!visible[q.id]) continue;
+    if (q.type === "info") continue; // text-only blocks never carry an answer
     let value = answerMap[q.id];
     if (q.type === "number" && value !== undefined && value !== null && value !== "") {
       if (isInvalidNumber(q, value)) {

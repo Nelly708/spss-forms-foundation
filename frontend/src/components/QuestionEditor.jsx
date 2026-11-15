@@ -1,5 +1,5 @@
 import {
-  QUESTION_TYPE_VALUES, HAS_OPTIONS, CAN_HAVE_OTHER, CAN_BE_FILTER, FONT_OPTIONS,
+  QUESTION_TYPE_VALUES, BASIC_QUESTION_TYPES, HAS_OPTIONS, CAN_HAVE_OTHER, CAN_BE_FILTER, FONT_OPTIONS,
   blankMatrixConfig, arrayMove, normalizeRow,
 } from "../questionTypes.js";
 import { numberLimits, numberRangeText } from "../questionLogic.js";
@@ -27,8 +27,22 @@ export default function QuestionEditor({
   onMoveUp, onMoveDown, isFirst, isLast,
   previousQuestions = [], // choice questions above this one: { id, title, options, number }
   conditionAbove = null,  // the show/hide rule of the question right above (for "copy")
+  expert = false,         // expert mode shows fonts, images, advanced types and rules
 }) {
   const { t, tn } = useLanguage();
+
+  const isInfo = question.type === "info";
+  const cfg = question.config || {};
+  // Settings that only expert mode can change; if a question already uses
+  // them we say so instead of silently hiding them.
+  const usesAdvanced = !!(
+    cfg.titleFont || cfg.descriptionFont || cfg.imageUrl || cfg.shuffleOptions || cfg.isFilter || cfg.condition
+  );
+  // Basic mode offers the everyday types; the question's current type is
+  // always listed so an existing table/scale still shows correctly.
+  const typeValues = expert
+    ? QUESTION_TYPE_VALUES
+    : QUESTION_TYPE_VALUES.filter((v) => BASIC_QUESTION_TYPES.has(v) || v === question.type);
 
   function update(patch) {
     onChange({ ...question, ...patch });
@@ -71,6 +85,7 @@ export default function QuestionEditor({
       config = { ...config, ...blankMatrixConfig(t) };
     }
     const patch = { type: newType, config };
+    if (newType === "info") patch.required = false;
     if (HAS_OPTIONS.has(newType)) {
       patch.options = question.options.length ? question.options : [t("optionN", { n: 1 })];
     }
@@ -169,7 +184,7 @@ export default function QuestionEditor({
       {question.config?.imageUrl && (
         <div style={{ position: "relative", marginBottom: 12 }}>
           <img src={question.config.imageUrl} alt="" style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 6, display: "block" }} />
-          {focused && (
+          {focused && expert && (
             <button type="button" className="btn text" style={{ position: "absolute", top: 6, right: 6, background: "#fff" }} onClick={removeImage}>{t("removeImage")}</button>
           )}
         </div>
@@ -185,7 +200,7 @@ export default function QuestionEditor({
         )}
         <input
           type="text"
-          placeholder={t("questionPlaceholder")}
+          placeholder={isInfo ? t("infoPlaceholder") : t("questionPlaceholder")}
           value={question.title}
           onChange={(e) => update({ title: e.target.value })}
           style={{ fontSize: 16, flex: 1, fontFamily: titleFont || "inherit" }}
@@ -199,34 +214,44 @@ export default function QuestionEditor({
         style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 14, fontFamily: descriptionFont || "inherit" }}
       />
 
-      {focused && (
+      {focused && (expert || !isInfo) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", marginBottom: 14 }}>
-          <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-            {t("titleFont")}<br />
-            <select value={titleFont} onChange={(e) => updateConfig({ titleFont: e.target.value })} style={{ marginTop: 2 }}>
-              {FONT_OPTIONS.map((f) => <option key={f.value} value={f.value}>{t(`font.${f.key}`)}</option>)}
-            </select>
-          </label>
-          <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-            {t("descriptionFont")}<br />
-            <select value={descriptionFont} onChange={(e) => updateConfig({ descriptionFont: e.target.value })} style={{ marginTop: 2 }}>
-              {FONT_OPTIONS.map((f) => <option key={f.value} value={f.value}>{t(`font.${f.key}`)}</option>)}
-            </select>
-          </label>
-          <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-            {t("image")}<br />
-            <input type="file" accept="image/*" onChange={handleImageChange} style={{ marginTop: 2, fontSize: 12 }} />
-          </label>
-          <label className={`required-toggle ${question.required ? "on" : ""}`}>
-            <input
-              type="checkbox"
-              checked={question.required}
-              onChange={(e) => update({ required: e.target.checked })}
-            />
-            <span className="required-star">*</span>
-            {t("requiredLabel")}
-          </label>
+          {expert && (
+            <>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                {t("titleFont")}<br />
+                <select value={titleFont} onChange={(e) => updateConfig({ titleFont: e.target.value })} style={{ marginTop: 2 }}>
+                  {FONT_OPTIONS.map((f) => <option key={f.value} value={f.value}>{t(`font.${f.key}`)}</option>)}
+                </select>
+              </label>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                {t("descriptionFont")}<br />
+                <select value={descriptionFont} onChange={(e) => updateConfig({ descriptionFont: e.target.value })} style={{ marginTop: 2 }}>
+                  {FONT_OPTIONS.map((f) => <option key={f.value} value={f.value}>{t(`font.${f.key}`)}</option>)}
+                </select>
+              </label>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                {t("image")}<br />
+                <input type="file" accept="image/*" onChange={handleImageChange} style={{ marginTop: 2, fontSize: 12 }} />
+              </label>
+            </>
+          )}
+          {!isInfo && (
+            <label className={`required-toggle ${question.required ? "on" : ""}`}>
+              <input
+                type="checkbox"
+                checked={question.required}
+                onChange={(e) => update({ required: e.target.checked })}
+              />
+              <span className="required-star">*</span>
+              {t("requiredLabel")}
+            </label>
+          )}
         </div>
+      )}
+
+      {focused && !expert && usesAdvanced && (
+        <div className="advanced-hint">{t("advancedInUse")}</div>
       )}
 
       {focused && (
@@ -235,7 +260,7 @@ export default function QuestionEditor({
           onChange={(e) => changeType(e.target.value)}
           style={{ ...selectStyle, marginBottom: 14 }}
         >
-          {QUESTION_TYPE_VALUES.map((value) => (
+          {typeValues.map((value) => (
             <option key={value} value={value}>{t(`questionType.${value}`)}</option>
           ))}
         </select>
@@ -265,11 +290,25 @@ export default function QuestionEditor({
               )}
             </div>
           ))}
+          {CAN_HAVE_OTHER.has(question.type) && question.config?.allowOther && (
+            <div className={`option-row ${question.type === "checkbox" ? "checkbox" : ""}`}>
+              <span className="bullet" />
+              <span style={{ color: "var(--text-secondary)" }}>{t("otherLabel")} <em>{t("freeText")}</em></span>
+              {focused && (
+                <button
+                  type="button"
+                  className="btn text"
+                  title={t("removeOther")}
+                  onClick={() => updateConfig({ allowOther: false })}
+                >✕</button>
+              )}
+            </div>
+          )}
           {focused && (
             <button className="btn text" onClick={addOption}>{t("addOption")}</button>
           )}
 
-          {focused && (
+          {focused && expert && (
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13, color: "var(--text-secondary)" }}>
               <input
                 type="checkbox"
@@ -283,27 +322,18 @@ export default function QuestionEditor({
             <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>{t("shuffledBadge")}</div>
           )}
 
-          {CAN_HAVE_OTHER.has(question.type) && (
-            focused ? (
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13, color: "var(--text-secondary)" }}>
-                <input
-                  type="checkbox"
-                  checked={!!question.config?.allowOther}
-                  onChange={(e) => updateConfig({ allowOther: e.target.checked })}
-                />
-                {t("addOtherLabel")}
-              </label>
-            ) : (
-              question.config?.allowOther && (
-                <div className="option-row">
-                  <span className="bullet" />
-                  <span style={{ color: "var(--text-secondary)" }}>{t("otherLabel")} <em>{t("freeText")}</em></span>
-                </div>
-              )
-            )
+          {CAN_HAVE_OTHER.has(question.type) && focused && (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13, color: "var(--text-secondary)" }}>
+              <input
+                type="checkbox"
+                checked={!!question.config?.allowOther}
+                onChange={(e) => updateConfig({ allowOther: e.target.checked })}
+              />
+              {t("addOtherLabel")}
+            </label>
           )}
 
-          {CAN_BE_FILTER.has(question.type) && focused && (
+          {CAN_BE_FILTER.has(question.type) && focused && expert && (
             <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px dashed var(--border)" }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary)" }}>
                 <input
@@ -438,8 +468,23 @@ export default function QuestionEditor({
         <input disabled type="text" placeholder={t("shortAnswerPlaceholder")} style={{ marginTop: 8, opacity: 0.6 }} />
       )}
 
+      {/* Text-only block: where it is shown */}
+      {isInfo && focused && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 13, color: "var(--text-secondary)" }}>
+          <input
+            type="checkbox"
+            checked={!!cfg.showAfterSubmit}
+            onChange={(e) => updateConfig({ showAfterSubmit: e.target.checked })}
+          />
+          {t("infoShowAfterSubmit")}
+        </label>
+      )}
+      {isInfo && !focused && cfg.showAfterSubmit && (
+        <div className="condition-badge">{t("infoAfterSubmitBadge")}</div>
+      )}
+
       {/* Show/hide rule (dynamic filter) — editing */}
-      {focused && (
+      {focused && expert && (
         <div className="condition-box">
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary)" }}>
             <input

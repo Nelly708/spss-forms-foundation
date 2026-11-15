@@ -11,7 +11,21 @@ export const QUESTION_TYPE_VALUES = [
   "matrix",
   "number",
   "date",
+  "info",
 ];
+
+// Question types offered in the builder's basic mode. Everything else
+// (scale, table/matrix) appears only in expert mode.
+export const BASIC_QUESTION_TYPES = new Set([
+  "short_text",
+  "paragraph",
+  "multiple_choice",
+  "checkbox",
+  "dropdown",
+  "number",
+  "date",
+  "info",
+]);
 
 export const HAS_OPTIONS = new Set(["multiple_choice", "checkbox", "dropdown"]);
 

@@ -4,8 +4,8 @@ import { api } from "../api.js";
 import QuestionRenderer from "../components/QuestionRenderer.jsx";
 import { useLanguage } from "../i18n.jsx";
 import {
-  computeVisibility, isAnswered, isFilterQuestion, isInvalidNumber,
-  numberErrorText, formatTime,
+  computeVisibility, isAnswered, isAnswerable, isFinalMessage, isFilterQuestion,
+  isInvalidNumber, numberErrorText, formatTime,
 } from "../questionLogic.js";
 
 function questionQualifies(question, value) {
@@ -56,9 +56,10 @@ export default function FormViewer() {
 
   // Completion percentage = answered visible questions / all visible questions.
   const percent = useMemo(() => {
-    if (visibleQuestions.length === 0) return 0;
-    const done = visibleQuestions.filter((q) => isAnswered(q, answers[q.id])).length;
-    return Math.round((done / visibleQuestions.length) * 100);
+    const countable = visibleQuestions.filter(isAnswerable);
+    if (countable.length === 0) return 0;
+    const done = countable.filter((q) => isAnswered(q, answers[q.id])).length;
+    return Math.round((done / countable.length) * 100);
   }, [visibleQuestions, answers]);
 
   // Countdown: starts when the full form appears, based on the clock (not on
@@ -109,7 +110,7 @@ export default function FormViewer() {
   function validate() {
     const found = {};
     for (const q of form.questions) {
-      if (!visible[q.id]) continue;
+      if (!visible[q.id] || !isAnswerable(q)) continue;
       const value = answers[q.id];
       if (q.required && !isAnswered(q, value)) {
         found[q.id] = t("requiredQuestionError");
@@ -124,7 +125,7 @@ export default function FormViewer() {
 
   async function sendAnswers(timedOut) {
     const payload = form.questions
-      .filter((q) => visible[q.id] && answers[q.id] !== undefined)
+      .filter((q) => visible[q.id] && isAnswerable(q) && answers[q.id] !== undefined)
       .map((q) => ({ questionId: q.id, value: answers[q.id] }));
     try {
       await api.submitResponse(id, payload, timedOut);
@@ -160,11 +161,13 @@ export default function FormViewer() {
   }
 
   if (submitted) {
+    // A text-only block marked "show after submit" replaces the default message.
+    const closing = form.questions.find((q) => isFinalMessage(q) && (q.title || q.description));
     return (
       <div className="container">
         <div className="card header-card" style={{ textAlign: "center" }}>
-          <h2>{t("responseRecorded")}</h2>
-          <p>{t("thanksForFilling", { title: form.title })}</p>
+          <h2>{closing ? closing.title || t("responseRecorded") : t("responseRecorded")}</h2>
+          <p>{closing ? closing.description : t("thanksForFilling", { title: form.title })}</p>
           {submittedByTimer && <p style={{ color: "var(--text-secondary)" }}>{t("timeUpSubmitted")}</p>}
         </div>
       </div>
@@ -195,6 +198,25 @@ export default function FormViewer() {
   }
 
   function renderQuestionCard(q) {
+    if (q.type === "info") {
+      return (
+        <div className="card info-card" key={q.id} id={`q-${q.id}`}>
+          {q.config?.imageUrl && (
+            <img
+              src={q.config.imageUrl}
+              alt=""
+              style={{ maxWidth: "100%", maxHeight: 320, borderRadius: 6, display: "block", marginBottom: 12 }}
+            />
+          )}
+          <div style={{ fontWeight: 500, fontSize: 18, fontFamily: q.config?.titleFont || "inherit" }}>{q.title}</div>
+          {q.description && (
+            <div style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 6, fontFamily: q.config?.descriptionFont || "inherit" }}>
+              {q.description}
+            </div>
+          )}
+        </div>
+      );
+    }
     return (
       <div className={`card${errors[q.id] ? " invalid" : ""}`} key={q.id} id={`q-${q.id}`}>
         {q.config?.imageUrl && (
@@ -262,7 +284,7 @@ export default function FormViewer() {
         {form.description && <p style={{ color: "var(--text-secondary)" }}>{form.description}</p>}
       </div>
 
-      {visibleQuestions.map(renderQuestionCard)}
+      {visibleQuestions.filter((q) => !isFinalMessage(q)).map(renderQuestionCard)}
 
       {formError && <p className="error-text">{formError}</p>}
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}

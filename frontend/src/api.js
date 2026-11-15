@@ -49,4 +49,8 @@ export const api = {
     }).then(handle),
   listResponses: (formId) => fetch(`${BASE}/${formId}/responses`).then(handle),
   getStats: (formId) => fetch(`${BASE}/${formId}/stats`).then(handle),
+  // Address of the CSV download (opened as a normal link, not via fetch).
+  // sep: "semicolon" (opens correctly in Russian-locale Excel) or "comma".
+  exportCsvUrl: (formId, sep = "semicolon", lang = "ru") =>
+    `${BASE}/${formId}/export.csv?sep=${sep}&lang=${lang}`,
 };

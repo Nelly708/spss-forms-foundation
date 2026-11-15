@@ -52,6 +52,27 @@ export function computeVisibility(questions, answers) {
   return visible;
 }
 
+// A matrix cell is a plain string (the chosen column) or, for a row the
+// respondent can write into, an object { label, column }.
+function cellFilled(v) {
+  if (v && typeof v === "object") {
+    return String(v.label ?? "").trim() !== "" || String(v.column ?? "").trim() !== "";
+  }
+  return String(v ?? "").trim() !== "";
+}
+
+// "info" questions are text-only blocks (e.g. "Thank you for taking part"):
+// nothing to answer, so they never count as required or answered.
+export function isAnswerable(question) {
+  return question.type !== "info";
+}
+
+// A text-only block marked to be shown after the form is submitted instead
+// of inside the form.
+export function isFinalMessage(question) {
+  return question.type === "info" && !!question.config?.showAfterSubmit;
+}
+
 export function isAnswered(question, value) {
   if (value === undefined || value === null) return false;
   if (question.type === "checkbox") {
@@ -62,7 +83,7 @@ export function isAnswered(question, value) {
   if (question.type === "matrix") {
     if (typeof value !== "object") return false;
     const rows = (question.config?.rows || []).map(normalizeRow);
-    const filled = (i) => String(value[String(i)] ?? "").trim() !== "";
+    const filled = (i) => cellFilled(value[String(i)]);
     const choiceRows = rows.map((r, i) => ({ r, i })).filter((x) => !x.r.freeText);
     if (choiceRows.length === 0) return rows.some((_, i) => filled(i));
     return choiceRows.every((x) => filled(x.i));

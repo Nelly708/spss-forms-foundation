@@ -10,7 +10,7 @@ function round(n) {
 
 export default function FormResults() {
   const { id } = useParams();
-  const { t, tn } = useLanguage();
+  const { t, tn, lang } = useLanguage();
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
 
@@ -35,6 +35,15 @@ export default function FormResults() {
           {tn("responsesCount", stats.totalResponses)}
           {stats.timedOutCount > 0 && <> · {t("timedOutCount", { n: stats.timedOutCount })}</>}
         </p>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <a className="btn" href={api.exportCsvUrl(id, "semicolon", lang)} download>
+            ⬇ {t("exportCsv")}
+          </a>
+          <a className="btn secondary" href={api.exportCsvUrl(id, "comma", lang)} download>
+            {t("exportCsvComma")}
+          </a>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("exportHint")}</span>
+        </div>
       </div>
 
       {stats.totalResponses === 0 && (
@@ -69,12 +78,18 @@ export default function FormResults() {
                   <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{r.row}</div>
                   {r.freeText ? (
                     <div>
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>
-                        {t("avgWordCount", { n: round(r.avgWordCount) })}
-                      </div>
-                      {r.sampleAnswers.map((a, i) => (
+                      {r.frequency.map((row) => (
+                        <StatBar
+                          key={row.value}
+                          label={String(row.value)}
+                          count={row.count}
+                          percent={row.percent}
+                          maxPercent={r.frequency[0]?.percent || 100}
+                        />
+                      ))}
+                      {r.entries.map((entry, i) => (
                         <div key={i} style={{ padding: "4px 0", borderTop: i > 0 ? "1px solid var(--border)" : "none", fontSize: 13 }}>
-                          {String(a)}
+                          {entry.label || "—"}{entry.column && <> — <strong>{entry.column}</strong></>}
                         </div>
                       ))}
                     </div>

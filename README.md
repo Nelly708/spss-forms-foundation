@@ -59,6 +59,26 @@ your response data.
 - **Number limits** — a "Number" question can have a minimum and/or maximum;
   respondents see the allowed range and out-of-range answers are rejected
   (in the browser and on the server).
+- **Basic and expert mode** — the builder opens in basic mode: everyday question
+  types (short/long answer, one choice, checkboxes, dropdown, number, date,
+  text-only) and the "required" toggle. The "Expert mode" switch (top right of the
+  builder, remembered in the browser) adds fonts, images, tables, scales,
+  show/hide rules, filters, answer shuffling and the timer/progress settings.
+  Anything already set up stays in force when you switch back to basic mode.
+- **"Other" in the options list** — ticking "Add Other" immediately adds an
+  "Other: free text" row to the option list (it can be removed with the ✕).
+- **Text-only items** ("Text only (no answer)") — a block with a title and text,
+  e.g. "Thank you for taking part". Nothing to answer; it is never required and not
+  counted in progress or statistics. Tick "show after the form is submitted" to use
+  it as the closing message instead of the default thank-you text.
+- **Table rows the respondent can write into** — tick ✍️ next to a table row (e.g.
+  "Other (specify)"): the row name becomes a text field and the respondent can still
+  pick a column (yes/no) for what they wrote.
+- **CSV export** — on the "Responses" page: all responses in one table, one row per
+  respondent (semicolon-separated for Excel; a comma variant for SPSS and others).
+  Table rows become separate columns, checkbox answers are joined with "; ", and
+  text starting with = + - @ is prefixed with an apostrophe so Excel cannot run it
+  as a formula. The API address is `GET /api/forms/:id/export.csv?sep=comma&lang=en`.
 - **Public form viewer** (`/forms/:id/view`) — fill in and submit a form.
 - **Response collection** — every submission is stored with per-question answers.
 - **Statistics dashboard** (`/forms/:id/results`) — for each question, computed
